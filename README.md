@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Authentic Representation Project is a research and data repository focused on disability representation, authentic casting, and media inclusion in UK television drama. The project brings together annual production reports, dataset records, narrative findings, and policy critique in support of authentic and user-centered representation analysis.
+The Authentic Representation Project is a research and data repository focused on disability representation, authentic casting, and media inclusion in UK television drama. The project brings together datasets, reports, and documentation to support analysis of representation across multiple production years and reporting cycles.
 
 ## Purpose
 
@@ -14,7 +14,7 @@ This repository was created to:
 - Support regulatory and policy critique around authentic portrayals
 - Consolidate research materials, reports, and project documentation in one place
 
-## Agent Policy and Operational Guidance
+## Project Governance and Source Handling
 
 This repository includes an `AGENTS.md` file at the root to define the project’s operational and governance rules for agents, tools, and contributors.
 
@@ -28,6 +28,13 @@ The AGENTS policy covers:
 - treatment of external sources and contextual metadata used alongside primary project evidence
 
 Agents and automation should read `AGENTS.md` before acting on project files or producing outputs derived from project data.
+
+The project also incorporates IMDb 2026 as a secondary external contextual data source. This data may be used to support production and cast context, but it is not treated as a verified record of disability status, disclosure, or identity classification.
+
+## Included Documentation and External Data
+
+- `AGENTS.md` — project governance and agent rules for research, provenance, privacy, and automation
+- `IMDb 2026` — contextual external metadata used for title/cast comparison and production context only
 
 ## Repository Structure
 
@@ -93,7 +100,7 @@ These materials support consistent data collection and disability research metho
 
 ## IMDb 2026 Contextual Data
 
-This repository also recognizes IMDb 2026 as a secondary external contextual data source that may be used for:
+This repository recognizes IMDb 2026 as a secondary external contextual data source that may be used for:
 
 - cross-referencing production metadata
 - supporting title-level and cast-level context
@@ -133,7 +140,7 @@ Repository: `Double-FW/Authentic-Representation-Project`
 
 ## License and Usage
 
-This repository is intended for research, analysis, and documentation purposes. Please review the project files and use them within the context of the relevant research and reporting materials included here. Where external metadata such as IMDb 2026 is referenced, its role is contextual and secondary rather than definitive evidence on disability status or disclosure.
+This repository is intended for research, analysis, and documentation purposes. Please review the project files and use them within the context of the relevant research and reporting materials in the repository. All project data and documents should be handled in accordance with the repository’s AGENTS policy and data provenance requirements.
 
 ---
 
