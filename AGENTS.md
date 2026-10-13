@@ -1,192 +1,265 @@
+---
+title: "AGENTS"
+version: "1.1.0"
+author: "Double-FW"
+date: "2026-10-13"
+license: "unspecified"
+language: "en"
+repository: "Double-FW/Authentic-Representation-Project"
+artifact_type: "policy_document"
+use_case: ["research_data_governance","agent_rules","representation_analysis"]
+entities:
+  - actor
+  - production
+  - casting_event
+  - disability_category
+  - dataset
+  - report
+---
+
 # AGENTS.md
 
-## Repository purpose
+This file contains machine-readable agent rules, metadata, templates, observability hooks, a quick-start checklist, a minimal programmatic decision flow, and versioning/changelog metadata for automation to validate before trusting rules.
 
-This repository documents and analyzes authentic representation, disability inclusion, and casting practices in UK television drama. It is a research and evidence repository, not a general-purpose software project. Its purpose is to gather, preserve, compare, and interpret material related to authentic casting, disability portrayal, and longitudinal changes in media representation.
+## Machine-readable rules and metadata (YAML)
 
-The project is grounded in the principle that identity, information, and experience should be represented in ways that are meaningful, truthful, user-centered, and respectful of the people being described.
+rules:
+  - id: R001
+    title: "Preserve original data"
+    priority: high
+    trigger: "file.added | file.updated"
+    condition: "path matches '**/*.xlsx' or '**/*.docx'"
+    action:
+      - "store_raw_copy: true"
+      - "add_metadata: true"
+    rationale: "Raw sources must be preserved for provenance and audit."
 
-## Core principles
+  - id: R002
+    title: "Framing for disability fields"
+    priority: high
+    trigger: "dataset.accessed"
+    condition: "dataset.schema contains 'disability'"
+    action:
+      - "label_field: disclosure_status"
+      - "enforce_distinction: [apparent, self_disclosed, administrative]"
+      - "annotate: definitions and caveats"
+    rationale: "Distinguish apparent vs verified status in outputs."
 
-### 1. Authenticity over tokenism
-- Prioritize truthful, context-aware, and person-centered representation.
-- Distinguish between authentic inclusion, symbolic representation, and superficial or performative inclusion.
-- Treat disability representation as a question of recognition, agency, and quality of portrayal rather than simple headcount metrics alone.
+  - id: R003
+    title: "No PII leakage in public outputs"
+    priority: critical
+    trigger: "report.published | artifact.exported"
+    condition: "output.visibility == public"
+    action:
+      - "redact_fields: [name, contact, national_identifiers]"
+      - "anonymize_roles: true"
+    rationale: "Protect personal privacy.",
 
-### 2. Human dignity and respectful language
-- Use language that respects disabled people, actors, and communities.
-- Do not reduce people to deficit-based labels or stigmatizing shorthand unless explicitly used as a historical or dataset label.
-- When historical or source-language categories are retained for evidence or analysis, clearly label them as archival, administrative, or source-defined terminology.
+metadata_schema:
+  version: "1.0"
+  required_fields:
+    - title
+    - description
+    - owner
+    - source
+    - collection_date
+    - reporting_period
+    - unit_of_analysis
+    - category_scheme
+    - disclosure_status
+    - sensitivity
 
-### 3. Evidence-first analysis
-- Ground claims in the project datasets, reports, and methodology documents.
-- Distinguish clearly between observed data, analytical interpretation, and policy critique.
-- Do not infer causation or intention without evidence.
+# JSON Schema (simplified) for validation
 
-### 4. Transparency and traceability
-- Maintain clear provenance for all files, spreadsheets, reports, and outputs.
-- Record source, date, version, method, and assumptions whenever adding or updating research materials.
-- Preserve original files before modification and retain versioned derivatives where needed.
+metadata_json_schema: |
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": ["title","owner","source","collection_date"],
+    "properties": {
+      "title": {"type":"string"},
+      "description": {"type":"string"},
+      "owner": {"type":"string"},
+      "source": {"type":"string"},
+      "collection_date": {"type":"string","format":"date"},
+      "reporting_period": {"type":"string"},
+      "unit_of_analysis": {"type":"string"},
+      "category_scheme": {"type":"string"},
+      "disclosure_status": {"type":"string","enum":["self_disclosed","apparent","verified","unknown"]}
+    }
+  }
 
-### 5. Longitudinal and comparative research integrity
-- Recognize that this project compares annual reporting periods, cumulative casting activity, and multi-year trends.
-- Ensure analyses remain consistent across years and do not silently change category definitions over time.
-- Flag changes in category naming, inclusion criteria, or reporting rules as methodological changes.
+## Templated prompt/response examples (short)
 
-## Research and methodological scope
+templates:
+  - name: "DatasetSummaryRequest"
+    prompt: |
+      "You are an assistant summarizing a dataset about casting activity. Provide: dataset title, reporting_period, unit_of_analysis, top-3 findings, and limitations. Use neutral, person-centered language."
+    example_response: |
+      "Title: 2024 Casting Activity Master\nReporting period: 2021-2024\nUnit: production-role\nTop findings: ...\nLimitations: apparent vs self-disclosed distinctions apply."
 
-This repository contains a mix of:
-- annual production reports
-- casting datasets and carry-forward analyses
-- research methods and prompt materials
-- regulatory critique and narrative findings
-- historical and archival records
+  - name: "PolicyCheckBeforePublish"
+    prompt: |
+      "Before publishing a public report, check for PII, confirm metadata, list redactions, and provide an audit summary. Respond with JSON: {publish: bool, issues:[], audit: {redacted_fields:[], retained_raw_paths:[]}}"
+    example_response: |
+      "{\n  \"publish\": false,\n  \"issues\": [\"contains actor full names\"],\n  \"audit\": {\"redacted_fields\": [\"name\"], \"retained_raw_paths\": [\"/Actor Data Sets/…\"]}\n}"
 
-The repository supports analysis of:
-- disability representation in UK television drama
-- authentic casting practices
-- actor disclosure and representation categories
-- changes in annual casting and production activity
-- BBC and broader regulatory contexts
-- longitudinal evidence across multiple reporting years
+prompt_templates_notes: "Agents should select the smallest applicable template and always include metadata validation step before returning a response that references datasets."
 
-### Methodological expectations
-- Maintain a clear distinction between:
-  - actor-level data
-  - production-level data
-  - annual summary reports
-  - narrative analysis and critique
-  - archival or historical material
-- Apply consistent definitions for terms such as "disability", "apparent disability", "self-disclosure", "casting activity", and "representation category".
-- Document inclusion criteria and classification rules.
-- Explicitly identify whether a category is:
-  - self-identified
-  - observed / apparent
-  - recorded by a third party
-  - administrative or historical classification
-  - analytical coding used for study purposes
+## Observability hooks and logging requirements
 
-## Data framing and metadata standards
+audit_event_schema:
+  - field: event_id
+    type: uuid
+  - field: timestamp
+    type: iso8601
+  - field: actor
+    type: string
+  - field: action
+    type: string
+  - field: target
+    type: path
+  - field: outcome
+    type: string
+  - field: redacted_fields
+    type: [string]
+  - field: notes
+    type: string
 
-All materials in this repository should be framed and documented using precise metadata. Every dataset, report, or output should be treated as a research object with clear provenance and contextual meaning.
+logging_requirements:
+  - record: all escalations, publications, and metadata changes
+  - retention_days: 1825 # 5 years
+  - storage: "encrypted-blob-store:projects/Double-FW/Authentic-Representation-Project/audit/"
+  - access_controls: ["project_admin","data_steward"]
+  - redact_policy:
+      - redact_when: "output.visibility == public"
+        fields: ["actor.name","actor.contact","national_identifiers"]
+      - redact_when: "user_request.redaction == true"
+        fields: ["*personal_identifiers*"]
+  - escalation_notice:
+      - on: "rule.R003 triggered"
+        notify: ["data_steward@doublefw.com"]
+        attach: ["audit_event_id","affected_paths","suggested_redactions"]
 
-### Required metadata for datasets and documents
-Each file or dataset should, where applicable, include or be accompanied by the following information:
+observability_endpoints:
+  - metrics: "/internal/metrics/agents"
+  - audit_log: "/internal/logs/audit"
+  - traces: "/internal/traces/agents"
 
-- Title
-- Short description of the research purpose
-- Data owner or responsible party
-- Source or provenance
-- Collection or publication date
-- Reporting period or date range
-- Geographic scope (e.g., UK television drama)
-- Subject area (e.g., casting, representation, actor register, annual report)
-- Unit of analysis (actor, production, role, casting event, report, etc.)
-- Category scheme used (e.g., disability category register, apparent disability, self-disclosure)
-- Definitions and assumptions
-- Version number or revision history
-- File format and file type
-- Data sensitivity / access level
-- Any known limitations or caveats
-- Relevant regulatory, industry, or policy context
+# Quick-start checklist (minimal)
 
-### Required framing language for representation data
-When working with disability-related records, the following framing rules apply:
+quick_start:
+  - step: "Read README.md and AGENTS.md"
+  - step: "Validate dataset metadata against metadata_json_schema"
+  - step: "If producing public outputs, run PolicyCheckBeforePublish template"
+  - step: "Preserve raw sources and create a derived copy with version"
+  - step: "Record audit_event with redactions and retention policy"
 
-- Use person-centered, neutral, and evidence-based framing.
-- Label apparent disability separately from diagnosed or self-identified disability where such distinction exists.
-- Do not present apparent or inferred disability as equivalent to clinically verified or self-disclosed disability unless explicitly stated.
-- If a dataset contains historical labels, note whether the category is archival, administrative, or inference-based.
-- Avoid implying that disability is purely visible or purely binary; use contextual explanation where needed.
+## Minimal programmatic decision flow (JSON)
 
-### Metadata emphasis for this repository
-The project is especially sensitive to metadata quality because the source material spans historical reporting, administrative records, and analytical interpretations. The following metadata elements should be considered standard:
+flow:
+  start: check_metadata
+  nodes:
+    - id: check_metadata
+      type: decision
+      condition: "metadata.valid == true"
+      on_true: allow_analysis
+      on_false: request_metadata
+    - id: request_metadata
+      type: action
+      action: "return: 'metadata_missing', fields_needed"
+      on_true: end
+    - id: allow_analysis
+      type: decision
+      condition: "output_visibility == public"
+      on_true: run_policy_check
+      on_false: produce_internal_report
+    - id: run_policy_check
+      type: action
+      action: "invoke: PolicyCheckBeforePublish"
+      on_true: review_and_publish
+    - id: review_and_publish
+      type: decision
+      condition: "policy_check.publish == true"
+      on_true: publish_and_audit
+      on_false: return_issues
+    - id: publish_and_audit
+      type: action
+      action: "store: audit_event; push: public_output"
+      on_true: end
+    - id: produce_internal_report
+      type: action
+      action: "store: internal_output; store: audit_event"
+      on_true: end
 
-- research_context
-- source_document
-- reporting_year
-- production_name
-- broadcaster
-- actor_or_character_scope
-- category_definition
-- disclosure_status
-- apparent_or_verified_status
-- data_collection_method
-- caveats_and_limitations
-- version_history
+# Decision flow as compact JSON for programmatic consumption
 
-## File and folder governance
+flow_json: |
+  {
+    "start": "check_metadata",
+    "nodes": {
+      "check_metadata": {"type":"decision","condition":"metadata.valid","true":"allow_analysis","false":"request_metadata"},
+      "request_metadata": {"type":"action","action":"return metadata_missing","next":null},
+      "allow_analysis": {"type":"decision","condition":"output_visibility=='public'","true":"run_policy_check","false":"produce_internal_report"},
+      "run_policy_check": {"type":"action","action":"invoke PolicyCheckBeforePublish","next":"review_and_publish"},
+      "review_and_publish": {"type":"decision","condition":"policy_check.publish==true","true":"publish_and_audit","false":"return_issues"},
+      "publish_and_audit": {"type":"action","action":"publish;create_audit_event","next":null},
+      "produce_internal_report": {"type":"action","action":"store_internal;create_audit_event","next":null}
+    }
+  }
 
-### Maintain the repository structure
-The repository contains project-specific directories and outputs such as:
-- annual reports folders
-- actor datasets
-- casting data and carry-forward analysis
-- final analytical outputs
-- methodology and prompt materials
+## Version, changelog, and review metadata
 
-When adding files:
-- keep naming consistent with existing project conventions
-- avoid renaming source files without documenting the change
-- preserve raw source files and clearly distinguish derived outputs
-- use descriptive names that communicate the content and date range
+policy_meta:
+  current_version: "1.1.0"
+  latest_release_date: "2026-10-13"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-10-08"
+      changes: "Initial AGENTS.md with principles and metadata requirements"
+    - version: "1.1.0"
+      date: "2026-10-13"
+      changes: "Added machine-readable rules, templates, observability hooks, flow_json, and policy_meta"
+  reviewers:
+    - name: "Double FW"
+      role: "owner"
+      reviewed_at: "2026-10-13"
+  next_review_due: "2027-10-13"
 
-### Versioning expectations
-- Treat all major research outputs as versioned artifacts.
-- When updating calculations, reports, or classifications, keep the prior version accessible.
-- Document why a file was changed and what was altered.
+review_requirements:
+  - must_have: ["policy_meta.current_version","rules","metadata_json_schema","audit_event_schema"]
+  - auto_check_script: "/scripts/validate_agents_policy.sh"
 
-### Raw data vs derived output
-- Preserve the integrity of original data files.
-- Store processed, filtered, or summary outputs separately from raw source material.
-- Clearly label transformation steps and derived datasets.
+## How automation should validate before trusting rules
 
-## Policy and ethics requirements
+validation_steps:
+  - step: "fetch AGENTS.md and parse YAML front matter"
+  - step: "confirm policy_meta.current_version matches referenced version"
+  - step: "validate rules against allowed schema and check for unresolved TODOs"
+  - step: "ensure audit endpoints and retention are present"
+  - step: "verify reviewer signature or reviewer entry present"
 
-### Respect for personal and identity data
-- Do not expose personally identifying information beyond what is necessary for the project scope.
-- Treat actor records and production data as sensitive research material.
-- Avoid making claims that rely on unverified identity assumptions or personal characteristics.
+## Redaction and escalation (programmatic)
 
-### Non-stigmatizing research practice
-- Do not use the repository to normalize deficit framings, stereotypes, or harmful assumptions about disability.
-- Ensure that analyses focus on representation quality, fairness, inclusion, and evidence-based critique rather than sensationalism.
+redaction_rules:
+  - id: REDACT_PUBLIC_PIIs
+    when: "output.visibility == public"
+    fields: ["actor.name","actor.contact","national_identifiers","address"]
+    method: "masking or removal"
 
-### Responsible use of outputs
-- Research outputs should be used for analysis, reporting, and policy discussion.
-- Present findings with context, limitations, and source transparency.
-- Do not use repository materials to make unsupported claims about individuals, productions, or communities.
+escalation_rules:
+  - id: ESCALATE_SENSITIVE_PUBLISH
+    trigger: "rule.R003 and output.contains_unredacted_pii"
+    action:
+      - "create_audit_event"
+      - "notify: data_steward@doublefw.com"
+      - "hold_publish: true"
 
-## Required agent behaviors
+## Maintenance notes
 
-When working in this repository, agents and contributors should:
-
-1. Read the repository README before making changes.
-2. Preserve the original research intent and context of the project.
-3. Use respectful, evidence-based, and person-centered language.
-4. Treat dataset definitions and category labeling as high-priority metadata decisions.
-5. Avoid changing labels, categories, or interpretations without documenting the rationale.
-6. Distinguish raw data from interpretation and commentary.
-7. Preserve historical terminology when necessary, but clearly identify it as historical or source-defined.
-8. Maintain traceability between findings, source files, and analytical outputs.
-9. Ensure that any new file or data artifact is framed with the appropriate metadata.
-10. Prefer clarification over assumption when source context is ambiguous.
-
-## Outcomes and success criteria
-
-The project is successful when it produces:
-- robust, transparent annual and longitudinal analyses
-- consistent and properly framed datasets
-- respectful and evidence-based media representation research
-- defensible commentary on authentic casting and policy implications
-- clearly documented provenance for all outputs and files
-- a repository that supports both analysis and public understanding without sacrificing accuracy or dignity
-
-## Summary
-
-This repository is an evidence-driven, human-centered research resource on authentic representation in UK television drama. All work should reinforce the project’s core goals: truthful representation, respectful framing, methodological rigor, and transparent documentation of data, categories, and interpretation.
-
-Repositories like this are strongest when they preserve the humanity behind the data and communicate the evidence with clarity, care, and integrity.
+- Keep the YAML front matter up to date (automation reads this first).
+- Do not change rule IDs (R001...) without updating changelog and policy_meta.
+- For major changes, increment major version and add an explicit review sign-off entry.
 
 ---
 
